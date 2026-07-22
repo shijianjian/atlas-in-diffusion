@@ -1,0 +1,17 @@
+# Install torch matching your CUDA build first, e.g.:
+#   pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+torch==2.1.2
+torchio==0.18.73
+pytorch-lightning==1.5.1
+numpy==1.26.4
+scipy==1.11.2
+scikit-image==0.21.0
+matplotlib==3.6.0
+einops==0.6.1
+einops-exts==0.0.4
+timm==0.6.12
+nibabel==5.2.0
+Pillow==9.3.0
+tqdm==4.66.1
+huggingface-hub==0.22.0
+
