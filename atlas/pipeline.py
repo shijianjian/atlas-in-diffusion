@@ -27,7 +27,7 @@ CLASS_BRAIN_T1 = 3
 LATENT_SHAPE = (8, 48, 48, 48)
 RES_TOKEN = (48.0, 48.0, 48.0)
 TIMESTEPS = 1000
-TSTAR = 99
+TSTAR = 99                       # early-stopping time (paper operating point)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -69,14 +69,23 @@ def _decode(ae, latent):
 
 def recover(model, diff, ae, *, age=None, cls=CLASS_BRAIN_T1,
             tstar=TSTAR, seed=0, cfg_scale=1.0):
-    """Recover one atlas volume. age in years (or None for the base model)."""
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+    """Recover one atlas volume. age in years (or None for the base model).
+
+    Deterministic reverse process from a single random x_T ~ N(0, I): every seed
+    converges to the same atlas (cross-seed SSIM ~0.9999), so the starting noise
+    does not need to be fixed.
+    """
+    if seed is not None:
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
     y = torch.tensor([cls], device=DEVICE)
     res = (torch.tensor(RES_TOKEN) / 64.0).unsqueeze(0).to(DEVICE)
     age_t = None if age is None else torch.tensor([age / 100.0], device=DEVICE)
     ts = list(range(TIMESTEPS - 1, tstar, -1))
+    if not ts:
+        raise ValueError(f"tstar={tstar} yields 0 reverse steps; use tstar < {TIMESTEPS-1} "
+                         f"(paper uses {TSTAR}).")
 
     def denoise(x, t, y=None, res=None, **kw):
         if age_t is None:

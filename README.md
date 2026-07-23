@@ -2,31 +2,23 @@
 
 **A diffusion model trained only to synthesize images already contains the atlas of
 its training population — recover it in one command.** Run the model's reverse
-process *deterministically* (drop the noise term) and every noise seed converges to
-the same image: the population template. No registration, no fine-tuning, no
-atlas-specific objective.
+process *deterministically* (drop the noise term) and independent noise seeds
+converge to the same image: the population template. No registration, no
+fine-tuning, no atlas-specific objective.
 
 From *"Atlases Are Already Inside: Recovering Population Templates from Pretrained
 Diffusion Models."*
 
 <table align="center">
   <tr>
-    <th colspan="2">Per anatomy</th>
-    <th colspan="3">Age-conditioned &mdash; one model, one atlas per age</th>
+    <td align="center"><img src="examples/anatomies/MRT1Brain.png" width="180"/></td>
+    <td align="center"><img src="examples/anatomies/MRT2Brain.png" width="180"/></td>
+    <td align="center"><img src="examples/anatomies/CTLegs.png" width="180"/></td>
   </tr>
   <tr>
-    <td align="center"><img src="examples/anatomies/MRT1Brain.png" width="130"/></td>
-    <td align="center"><img src="examples/anatomies/MRT2Brain.png" width="130"/></td>
-    <td align="center"><img src="examples/age_family/age20.png" width="130"/></td>
-    <td align="center"><img src="examples/age_family/age40.png" width="130"/></td>
-    <td align="center"><img src="examples/age_family/age60.png" width="130"/></td>
-  </tr>
-  <tr>
-    <td align="center">brain T1</td>
-    <td align="center">brain T2</td>
-    <td align="center">age 20</td>
-    <td align="center">age 40</td>
-    <td align="center">age 60</td>
+    <td align="center">T1 brain</td>
+    <td align="center">T2 brain</td>
+    <td align="center">leg CT</td>
   </tr>
 </table>
 
@@ -34,49 +26,74 @@ Diffusion Models."*
 
 ```bash
 pip install -r requirements.txt      # (install torch for your CUDA build first — see requirements.txt)
-python recover.py                    # -> outputs/age50.nii.gz  (+ preview PNG)
+python recover.py                    # T1 brain atlas -> outputs/atlas.nii.gz (+ preview PNG)
 ```
 
-The age-conditioned model auto-downloads from
-[Hugging Face](https://huggingface.co/shijianjian/Atlas-In-Diffusion). The base
-**autoencoder** (needed to decode) comes from 3D-MedDiffusion's own release — a
-one-time manual download (see below).
+This recovers the T1 brain atlas from the original pretrained generator — the
+paper's headline result. It needs the 3D-MedDiffusion weights (one-time download,
+see below).
+
+### Which model
+
+The generator is selected by the flags — no separate model switch:
+
+| command | model used |
+|---|---|
+| `python recover.py` | **base** generator (default) |
+| `python recover.py --class 4` | **base** generator, a different anatomy class |
+| `python recover.py --age 70` | **age-conditioned** generator (experimental, see below) |
+
+Passing `--age`/`--ages` loads the age model; anything else uses the base model.
 
 ## Weights
 
-- **Age model** (`age_cond.pt`) — fetched automatically from our
-  [HF repo](https://huggingface.co/shijianjian/Atlas-In-Diffusion).
 - **3D-MedDiffusion weights** — download from the authors' Google Drive (we do not
   re-host them):
   **https://drive.google.com/drive/folders/1h1Ina5iUkjfSAyvM5rUs4n1iqg33zB-J**
   and place them in `~/.cache/atlas_in_diffusion/` (or any folder, then set
   `ATLAS_WEIGHTS_DIR`):
-  - `PatchVolume4x_s2.ckpt` — the autoencoder (required for any atlas)
-  - `BiFlowNet_4x.pt` — the base generator (only for `--base`)
+  - `PatchVolume4x_s2.ckpt` — the autoencoder (required for every atlas)
+  - `BiFlowNet_4x.pt` — the base generator (for the default / `--class` atlases)
+- **Age model** (`age_cond.pt`) — fetched automatically from our
+  [HF repo](https://huggingface.co/shijianjian/Atlas-In-Diffusion) when you use `--age`.
 
-## More
+## More (base model)
 
 ```bash
-python recover.py --age 70                 # a different age
-python recover.py --ages 20,40,60,80       # a whole age family
-python recover.py --base                   # the original (non-age) model's brain atlas
+python recover.py                          # T1 brain atlas
+python recover.py --class 4                # a different anatomy class
 ```
 
 | flag | meaning | default |
 |------|---------|---------|
-| `--age` / `--ages` | age(s) in years (age-conditioned model) | 50 |
-| `--base` | use the original pretrained generator (no age) | off |
+| `--class` | anatomy-class token for the base model (3 = T1 brain) | 3 |
 | `--out` | output directory | `outputs/` |
+| `--seed` | optional seed for a fixed initial `x_T` | unset |
 | `--tstar` | early-stopping time (lower = more detail) | 99 |
-| `--cfg` | age guidance scale (>1) | 1.0 |
+
+## Age-conditioned atlases
+
+```bash
+python recover.py --age 70                 # one age
+python recover.py --ages 20,40,60,80       # a family
+```
+
+> **Note.** The age-conditioned generator is a proof-of-concept fine-tuned on a
+> **small dataset**. Its atlases are softer, and — unlike the base model — recovery
+> is **not fully stable across random initializations**. Treat these results as
+> illustrative of the *conditioning* idea, not as production atlases. The paper's
+> quantitative age results average several random-seed recoveries to smooth out
+> this variation.
+
+Age flags: `--age N` / `--ages a,b,c` (years), `--cfg` (age guidance scale, default 1.0).
 
 ## How it works
 
 `recover.py` draws `x_T ~ N(0, I)` in the model's latent space, fixes the anatomy
 (and optional age) conditioning, iterates the posterior-mean update
 `x_{t-1} = μ_θ(x_t, t)` (no noise term) down to `t*`, and decodes through the frozen
-autoencoder. Recovery is deterministic by default, so runs are bit-reproducible
-(set `ATLAS_NONDETERMINISTIC=1` to opt out).
+autoencoder. Pass `--seed` for bit-reproducible output (it pins the RNG and selects
+deterministic cuDNN kernels); without it, runs vary slightly at the sub-voxel level.
 
 ## Requirements
 
