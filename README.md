@@ -1,10 +1,18 @@
 # Atlas-In-Diffusion
 
-**A diffusion model trained only to synthesize images already contains the atlas of
-its training population — recover it in one command.** Run the model's reverse
-process *deterministically* (drop the noise term) and independent noise seeds
-converge to the same image: the population template. No registration, no
-fine-tuning, no atlas-specific objective.
+**Population atlases — the canonical anatomical templates at the heart of medical
+image analysis — have always had to be *built*: assemble a large cohort, then run
+expensive image registration, hand-tuned for each anatomy and modality.**
+
+We show that step is unnecessary. A diffusion model trained only to *generate*
+medical images already contains the atlas of its population, and it can be
+**recovered in a single inference pass** — no cohort, no registration, no
+atlas-specific training. One command produces coherent templates across organs and
+modalities (brain MRI, CT, chest X-ray, …) and, from an age-conditioned model, a
+whole family of age-specific atlases on demand.
+
+This reframes atlas construction as a *byproduct of inference*, and repositions
+pretrained generative models as reusable representations of population anatomy.
 
 From *"Atlases Are Already Inside: Recovering Population Templates from Pretrained
 Diffusion Models."*
