@@ -26,6 +26,11 @@ BIFLOWNET_KWARGS = dict(
 CLASS_BRAIN_T1 = 3
 LATENT_SHAPE = (8, 48, 48, 48)
 RES_TOKEN = (48.0, 48.0, 48.0)
+# The 7 anatomy classes of the base model, each with its own latent resolution.
+CLASS_RES = {0: (64, 64, 64), 1: (64, 64, 64), 2: (64, 64, 64),
+             3: (48, 48, 48), 4: (48, 48, 48), 5: (32, 64, 64), 6: (16, 80, 80)}
+CLASS_NAME = {0: "headneck_ct", 1: "chestabdomen_ct", 2: "leg_ct", 3: "t1_brain",
+              4: "t2_brain", 5: "abdomen_mr", 6: "knee_mr"}
 TIMESTEPS = 1000
 TSTAR = 99                       # early-stopping time (paper operating point)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -79,8 +84,9 @@ def recover(model, diff, ae, *, age=None, cls=CLASS_BRAIN_T1,
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
+    res_shape = (48, 48, 48) if age is not None else CLASS_RES.get(cls, (48, 48, 48))
     y = torch.tensor([cls], device=DEVICE)
-    res = (torch.tensor(RES_TOKEN) / 64.0).unsqueeze(0).to(DEVICE)
+    res = (torch.tensor([float(r) for r in res_shape]) / 64.0).unsqueeze(0).to(DEVICE)
     age_t = None if age is None else torch.tensor([age / 100.0], device=DEVICE)
     ts = list(range(TIMESTEPS - 1, tstar, -1))
     if not ts:
@@ -98,7 +104,7 @@ def recover(model, diff, ae, *, age=None, cls=CLASS_BRAIN_T1,
         return null + cfg_scale * (cond - null)
 
     with torch.no_grad():
-        z = torch.randn(1, *LATENT_SHAPE, device=DEVICE)
+        z = torch.randn(1, 8, *res_shape, device=DEVICE)
         latent, _, _ = diff.compute_deformation_field(denoise, z, y=y, res=res, timesteps=ts)
         return _decode(ae, latent)
 

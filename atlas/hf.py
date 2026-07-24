@@ -43,3 +43,19 @@ def autoencoder():
 def base_generator():
     """Original pretrained generator (3D-MedDiffusion)."""
     return _local("BiFlowNet_4x.pt")
+
+
+# 2D pixel-space DDPMs trained from scratch per domain (this work). Filenames on
+# the HF repo; a copy in ATLAS_WEIGHTS_DIR overrides the download.
+DOMAIN_2D_FILES = {
+    "chestxray": "ddpm2d_chestxray_128.pt",
+}
+
+
+def domain_2d(name):
+    """Fetch a 2D domain checkpoint (this work), from ATLAS_WEIGHTS_DIR or HF."""
+    fname = DOMAIN_2D_FILES[name]
+    local = os.path.join(WEIGHTS_DIR, fname)
+    if os.path.exists(local):
+        return local
+    return hf_hub_download(HF_REPO, fname)

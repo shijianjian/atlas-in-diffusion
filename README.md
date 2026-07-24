@@ -11,14 +11,16 @@ Diffusion Models."*
 
 <table align="center">
   <tr>
-    <td align="center"><img src="examples/anatomies/MRT1Brain.png" width="180"/></td>
-    <td align="center"><img src="examples/anatomies/MRT2Brain.png" width="180"/></td>
-    <td align="center"><img src="examples/anatomies/CTLegs.png" width="180"/></td>
+    <td align="center"><img src="examples/anatomies/MRT1Brain.png" width="150"/></td>
+    <td align="center"><img src="examples/anatomies/MRT2Brain.png" width="150"/></td>
+    <td align="center"><img src="examples/anatomies/CTLegs.png" width="150"/></td>
+    <td align="center"><img src="examples/modalities/chestxray.png" width="150"/></td>
   </tr>
   <tr>
-    <td align="center">T1 brain</td>
-    <td align="center">T2 brain</td>
-    <td align="center">leg CT</td>
+    <td align="center">T1 brain (3D)</td>
+    <td align="center">T2 brain (3D)</td>
+    <td align="center">leg CT (3D)</td>
+    <td align="center">chest X-ray (2D)</td>
   </tr>
 </table>
 
@@ -26,12 +28,27 @@ Diffusion Models."*
 
 ```bash
 pip install -r requirements.txt      # (install torch for your CUDA build first — see requirements.txt)
-python recover.py                    # T1 brain atlas -> outputs/atlas.nii.gz (+ preview PNG)
 ```
 
-This recovers the T1 brain atlas from the original pretrained generator — the
-paper's headline result. It needs the 3D-MedDiffusion weights (one-time download,
-see below).
+Recover a population atlas with one command. **3D anatomical atlases** from the
+original pretrained generator (writes a NIfTI volume + a PNG preview):
+
+```bash
+python recover.py                 # T1 brain  -> outputs/t1_brain.nii.gz
+python recover.py --class 4       # T2 brain  -> outputs/t2_brain.nii.gz
+python recover.py --class 2       # leg CT    -> outputs/leg_ct.nii.gz
+```
+
+**2D modality atlas** from a lightweight pixel-space DDPM (writes a PNG):
+
+```bash
+python recover.py --domain chestxray     # chest X-ray -> outputs/chestxray.png
+```
+
+The 3D generator + autoencoder are 3D-MedDiffusion's weights (one-time download,
+see [Weights](#weights)); the 2D checkpoints auto-download from Hugging Face.
+Other base-model anatomy classes: `0` head-neck CT, `1` chest-abdomen CT,
+`2` leg CT, `3` T1 brain, `4` T2 brain, `5` abdomen MR, `6` knee MR.
 
 ### Which model
 
@@ -74,8 +91,8 @@ python recover.py --class 4                # a different anatomy class
 ## Age-conditioned atlases
 
 ```bash
-python recover.py --age 70                 # one age
-python recover.py --ages 20,40,60,80       # a family
+python recover.py --age 50                 # one age
+python recover.py --ages 20,40,60          # a family
 ```
 
 > **Note.** The age-conditioned generator is a proof-of-concept fine-tuned on a
@@ -86,6 +103,20 @@ python recover.py --ages 20,40,60,80       # a family
 > this variation.
 
 Age flags: `--age N` / `--ages a,b,c` (years), `--cfg` (age guidance scale, default 1.0).
+
+## Other modalities — 2D
+
+The same recovery works on lightweight **2D pixel-space DDPMs** (no autoencoder),
+one small model per modality. Weights auto-download from the
+[HF repo](https://huggingface.co/shijianjian/Atlas-In-Diffusion).
+
+```bash
+python recover.py --domain chestxray       # -> outputs/chestxray.png
+```
+
+The recovered chest-X-ray atlas is a coherent population template (ribs, lungs,
+mediastinum). More 2D domains can be added by dropping a checkpoint on the HF repo
+and extending `DOMAIN_2D_FILES` in `atlas/hf.py`.
 
 ## How it works
 
