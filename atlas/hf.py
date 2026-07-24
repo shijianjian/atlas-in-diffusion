@@ -5,7 +5,7 @@
   BiFlowNet_4x.pt        original generator        -- from 3D-MedDiffusion (Google Drive)
 
 We do NOT re-host 3D-MedDiffusion's weights. Download them once from the authors'
-Google Drive and drop them in ATLAS_WEIGHTS_DIR (default ~/.cache/atlas_in_diffusion):
+Google Drive and drop them in the repo's weights/ folder (or set ATLAS_WEIGHTS_DIR):
 
     https://drive.google.com/drive/folders/1h1Ina5iUkjfSAyvM5rUs4n1iqg33zB-J
 """
@@ -14,8 +14,10 @@ from huggingface_hub import hf_hub_download
 
 HF_REPO = "shijianjian/Atlas-In-Diffusion"          # our age model + example atlases
 DRIVE_URL = "https://drive.google.com/drive/folders/1h1Ina5iUkjfSAyvM5rUs4n1iqg33zB-J"
-WEIGHTS_DIR = os.environ.get(
-    "ATLAS_WEIGHTS_DIR", os.path.expanduser("~/.cache/atlas_in_diffusion"))
+# local weights/ folder in the repo (override with ATLAS_WEIGHTS_DIR); anchored to
+# the repo root so it resolves the same no matter where you run recover.py from.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WEIGHTS_DIR = os.environ.get("ATLAS_WEIGHTS_DIR", os.path.join(_REPO_ROOT, "weights"))
 
 
 def _local(fname):

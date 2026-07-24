@@ -45,8 +45,6 @@ python recover.py --class 2       # leg CT    -> outputs/leg_ct.nii.gz
 python recover.py --domain chestxray     # chest X-ray -> outputs/chestxray.png
 ```
 
-The 3D generator + autoencoder are 3D-MedDiffusion's weights (one-time download,
-see [Weights](#weights)); the 2D checkpoints auto-download from Hugging Face.
 Other base-model anatomy classes: `0` head-neck CT, `1` chest-abdomen CT,
 `2` leg CT, `3` T1 brain, `4` T2 brain, `5` abdomen MR, `6` knee MR.
 
@@ -60,14 +58,11 @@ The generator is selected by the flags — no separate model switch:
 | `python recover.py --class 4` | **base** generator, a different anatomy class |
 | `python recover.py --age 70` | **age-conditioned** generator (experimental, see below) |
 
-Passing `--age`/`--ages` loads the age model; anything else uses the base model.
-
 ## Weights
 
-- **3D-MedDiffusion weights** — download from the authors' Google Drive (we do not
-  re-host them):
+- **3D-MedDiffusion weights** — download from the authors' Google Drive:
   **https://drive.google.com/drive/folders/1h1Ina5iUkjfSAyvM5rUs4n1iqg33zB-J**
-  and place them in `~/.cache/atlas_in_diffusion/` (or any folder, then set
+  and place them in the repo's `weights/` folder (or any folder, then set
   `ATLAS_WEIGHTS_DIR`):
   - `PatchVolume4x_s2.ckpt` — the autoencoder (required for every atlas)
   - `BiFlowNet_4x.pt` — the base generator (for the default / `--class` atlases)
@@ -104,32 +99,17 @@ python recover.py --ages 20,40,60          # a family
 
 Age flags: `--age N` / `--ages a,b,c` (years), `--cfg` (age guidance scale, default 1.0).
 
-## Other modalities — 2D
-
-The same recovery works on lightweight **2D pixel-space DDPMs** (no autoencoder),
-one small model per modality. Weights auto-download from the
-[HF repo](https://huggingface.co/shijianjian/Atlas-In-Diffusion).
-
-```bash
-python recover.py --domain chestxray       # -> outputs/chestxray.png
-```
-
-The recovered chest-X-ray atlas is a coherent population template (ribs, lungs,
-mediastinum). More 2D domains can be added by dropping a checkpoint on the HF repo
-and extending `DOMAIN_2D_FILES` in `atlas/hf.py`.
-
-## How it works
-
-`recover.py` draws `x_T ~ N(0, I)` in the model's latent space, fixes the anatomy
-(and optional age) conditioning, iterates the posterior-mean update
-`x_{t-1} = μ_θ(x_t, t)` (no noise term) down to `t*`, and decodes through the frozen
-autoencoder. Pass `--seed` for bit-reproducible output (it pins the RNG and selects
-deterministic cuDNN kernels); without it, runs vary slightly at the sub-voxel level.
-
 ## Requirements
 
-A CUDA GPU with **≥ 40 GB** memory is recommended for the 3D model. Runs on CPU but
-very slowly. Tested with Python 3.11, PyTorch 2.1.2 (CUDA 11.8).
+GPU memory depends on which recovery you run:
+
+| recovery | GPU |
+|----------|-----|
+| **3D atlases** (`recover.py`, `--class`, `--age`) | **A100 (80 GB)** — the 3D latent-diffusion model is memory-heavy, especially the larger anatomies (e.g. leg CT at 256³) |
+| **2D atlases** (`--domain chestxray`) | runs comfortably on a **V100** (16–32 GB) |
+
+Everything runs on CPU too, but very slowly. Tested with Python 3.11, PyTorch
+2.1.2 (CUDA 11.8).
 
 ## Example atlases
 
@@ -137,7 +117,7 @@ very slowly. Tested with Python 3.11, PyTorch 2.1.2 (CUDA 11.8).
 [Hugging Face](https://huggingface.co/shijianjian/Atlas-In-Diffusion).
 
 
-## Bundled model code
+## Acknoledgement
 `atlas/_vendor/ddpm/` and `atlas/_vendor/AutoEncoder/` are a frozen copy of the
 model code from **3D-MedDiffusion**
 (https://github.com/ShanghaiTech-IMPACT/3D-MedDiffusion, arXiv:2412.13059), with

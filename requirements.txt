@@ -1,8 +1,9 @@
-# Install torch matching your CUDA build first, e.g.:
-#   pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+# Install torch (and a matching torchvision) for your CUDA build first, e.g.:
+#   pip install torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu118
 torch==2.1.2
 torchio==0.18.73
 pytorch-lightning==1.5.1
+omegaconf==2.1.2          # needed to unpickle the autoencoder checkpoint's saved config
 numpy==1.26.4
 scipy==1.11.2
 scikit-image==0.21.0
